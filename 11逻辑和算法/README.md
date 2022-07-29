@@ -137,7 +137,79 @@ class Container<T> {
 
 
 ## 8 生成一系列不同的随机数
-*todo*
+这里介绍三种不使用库函数生成随机数的方法
+
+1. 中间平方数方法
+
+该方法由 `John Von Neumann` 在 1946 年发明的，该方法主要由下面几个步骤完成的
+- 将一个 N 位的数字作为种子，比如说 42
+- 将这个数平方计算，那么 42 的平方就是 1764
+- 将得到的数字取中加你的数字，那么现在就是 76
+- 然后将得到的数据作为新的种子，然后继续新一轮的迭代
+
+![](./image/Middle_square_method.jpg)
+
+```C#
+public class Random {
+    public static int round = 10;
+
+    public static int Next(int seed) {
+        for(int i = 0; i < round; i++) {
+            seed = NextRandom(seed)
+        }
+        return seed;
+    }
+
+    private static int NextRandom(int seed){
+        var result = (seed * seed).ToString();
+        if (result.Length % 2 == 1) { // if odded
+            result += "0" + result;
+        }
+        var newSeed = result.SubString(1, result.Length - 1);
+        return Int.Prase(newSeed);
+    }
+}
+```
+
+2. 线性共轭生成器
+该方法通过线性函数生成一系列随机数， 用数学公式表达如下
+
+```
+X = (a * X + c) % m
+```
+这里包含了三个参数
+
+- `a` 是线性乘数:`0< a <m`
+- `c` 是增长数: `0 <= c < m`
+- `m` 是模: `0<= X <m` 
+
+```C#
+public class Random {
+    public static int a;
+    public static int c;
+    public static int m;
+
+    public static int Next(int X){
+        return (a * X + c) % m;
+    }
+}
+```
+
+3. 异或算法
+
+该方法采用了异或（`XOR`) 算法来得到一个随机数
+
+```Csharp
+public class Random {
+
+    public static int Next(int seed){
+       seed ^= seed << 13;
+       seed ^= seed >> 17;
+       seed ^= seed << 5;
+       return (seed < 0)? ~seed + 1; seed;
+    }
+}
+```
 
 ## 9 编写简单的垃圾回收系统
 *todo*
@@ -149,7 +221,20 @@ class Container<T> {
 *todo*
 
 ## 12 如何对10GB的文件排序，那么10TB文件如何呢？
-*todo*
+
+假设我们的内存只有 1 GB，我们的目标是对 10 GB 的文件进行排序，我们采用的方法叫做[外部归并排序算法](https://en.wikipedia.org/wiki/External_sorting)
+
+主要步骤如下：
+1. 将 10 GB 的文件分为10次读入内存中，每次只读取 1 GB，并且将使用诸如快排的算法将它们排序
+2. 将这些排序好的数据，从内存写入到磁盘文件中。这样我们有了 10 份已经排序好的文件。
+3. 分别从这 10 份排序好的文件中读取前面 90 MB 的数据，共 900 MB 的数据进行 10 路归并排序，并且将排序后的结果存放在剩余的 100 MB (1GB - 900MB = 100MB). 
+4. 在这时候会出现两种情况：
+    a. 100 MB 的空间被填满，则将数据写入到最终的结果文件中，并且释放内存空间
+    b. 某个排序好的 90MB 文件已经读写完毕， 则继续从该堆中读取 90MB 的文件，重复 10 路归并算法
+5. 重复 3，4 两步，直到所有文件堆读取完毕。
+
+对于 10 TB 的文件，我们可以按照前面的步骤，将其换份10GB的文件，共 1024 份，然后对 10 GB的文件进行排序。排序结束之后，使用 1024 路归并即可完成最终的排序。
+
 ## 13 如何自动检测冗余的文件？
 *todo*
 

@@ -2,18 +2,86 @@
 2. [分布式版本控制系统和集中式版本管理系统有什么各自的缺点和优点？](#2-fen-bu-shi-ban-ben-kong-zhi-xi-tong-he-ji-zhong-shi-ban-ben-guan-li-xi-tong-you-shen-me-ge-zi-de-que-dian-he-you-dian)
 3. [你能描述github flow和gitflow各自的工作流？](#3-ni-neng-miao-shu-github-flow-he-gitflow-ge-zi-de-gong-zuo-liu)
 4. [什么是rebase?](#4-shen-me-shi-rebase)
-5. [为什么在Mercuial或者git中，创建分支比SVN分支容易?](#5-wei-shen-me-zai-mercuial-huo-zhe-git-zhong-chuang-jian-fen-zhi-bi-svn-fen-zhi-rong-yi)
-6. [分布式版本控制系统和集中式版本管理系统有什么各自的缺点和优点？](#6-fen-bu-shi-ban-ben-kong-zhi-xi-tong-he-ji-zhong-shi-ban-ben-guan-li-xi-tong-you-shen-me-ge-zi-de-que-dian-he-you-dian)
-7. [在Mercurial或者git中合并比SVN中容易；](#7-zai-mercurial-huo-zhe-git-zhong-he-bing-bi-svn-zhong-rong-yi)
+5. [在Mercurial或者git中合并比SVN中容易；](#5-zai-mercurial-huo-zhe-git-zhong-he-bing-bi-svn-zhong-rong-yi)
 
 ## 1 为什么在`Mercuial`或者`git`中，创建分支比`SVN`分支容易
-*todo*
+
+`SVN` 并没有一个叫做分支的概念，当你在 SVN 中使用所谓的分支的时候，只不过是创建了一个新的文件夹，然后将所有的文件拷贝进去。如果你仅仅是创建新的分支，然后做一些修改并且合并到之前的分支，最后删掉这个分支，这个没有任何大的问题。但是如果你想
+
+- 保持这个分支
+- 如果想从别的分支合并过来，而且该分支也做了一些修改
+
+那么你可能会遇到一些问题，处理起来非常耗时。那么 `git` 是如何处理分支的问题的呢？
+
+本质上来讲，`git` 是一个定制的文件数据库，它用 `.git` 文件夹的保存当前的目录下所有的文件的信息，并且使用树状结构来管理它们。
+
+首先我们可以看看 `.git` 目录是怎样的，截图如下。
+
+![](./images/gitrepo.png)
+
+在这里我们只关注 `objects` 和 `refs/heads` 两个文件夹，`object` 文件夹中主要存放了三种类型数据
+1. 文件 (blob)
+2. 文件夹 (tree)
+3. 提交 (commit)
+
+- 对于文件，读取文件内容并且使用 `Sha256` 提取摘要作为文件名，`git` 将前两个字符作为文件夹名字；
+- 对于文件夹，它是一系列这样三元组 `(<name> <sha256> <type>)` 的集合。`name` 可以是文件的名字，也可以是子文件名字；`sha256` 比较容易理解，这些信息都保存在 `ojects` 目录下；`type` 主要分为两类: `blob` 和 `tree` 两种。
+- 对于提交，主要是由下面的信息组成
+
+```
+tree <tree sha256>
+parent <previous commit sha256>
+
+<commit message>
+```
+
+提交信息也通过 `sha256` 提取摘要并且将这些信息写入到相应的文件中。通过提交信息中 `parent` 信息，我们可以将 `git` 仓库中的文件按照一定结构组织起来。
+
+假设我们的仓库中文件组织是这样的 
+
+```
+.
++-- hello.txt
+|  +tree
+|   -- git.txt
+```
+
+体现在 `git` 文件数据库中是这样的：
+
+![](./images/tree.png)
+
+
+那么 `git` 是如何知道每个分支处在何处呢？答案就在 `refs\heads` 文件夹中，每个文件就是一个分支，从上面的截图中，这个仓库只有一个 `master` 分支，这个文件的内容就是某一个提交的 `sha256` 的值。所以在 `git` 中创建一个分支非常容易，只需要在 `refs\heads` 目录下创一个文件，文件名就是分支的名称，内容是当前提交的 `sha256` 值。`git` 是如何知道但当前的提交的呢？ 答案在 `.git\HEAD` 这文件, 比如当前这个文件内容是 `ref: refs/heads/master`，它表明目前是处在 `master` 分支上。
+
+
 
 ## 2  分布式版本控制系统和集中式版本管理系统有什么各自的缺点和优点？
-*todo*
+集中式版本管理的优点
+
+- 搭建起来比较方便
+- 有很高的透明度
+- 方便管理员控制流程
+
+但是也有下面的缺点
+- 如果主服务器宕机，所有人都无法在使用版本控制服务
+- 远程提交比较慢
+- 不合理的更改可能导致开发环境的不可用
+- 如果主服务器的数据库损坏，就导致所有的提交历史无法查询
+
+分布式版本管理的优点
+- 因为可以本地提交， 所有的历史都能查询
+- 无需访问远端服务器
+- 可以持续 push 修改
+- 节省时间
+- 对于分布式的开发这非常友好
+
+分布式版本管理的缺点
+- 别人的修改可能不透明
+- 文件的冲突修改可能导致开发进度变慢
+- 分布式系统允许克隆整个仓库，可能有安全隐患
+- 二进制文件之间的 diff 非常困难。
 
 ## 3  你能描述`github flow`和`gitflow`各自的工作流？
-*todo*
 
 **github flow**
 github flow 以部署为中心的开发模式，功能简单可靠，持续、安全和高效的部署，以`Pull Request`为中心
@@ -46,12 +114,16 @@ github flow 以部署为中心的开发模式，功能简单可靠，持续、�
 
 注意：千万不要在一个*共享*的分支上做`rebase`操作，只能`reabse`私有化的分支。
 
-## 5 为什么在Mercuial或者git中，创建分支比SVN分支容易?
-*todo*
+## 5 在Mercurial或者git中合并比SVN中容易；
 
+在 SVN 中将整个系统的迭代当成一个版本(Version), 在每个节点为每个文件生成文件快照。如果说整个历史是线性的，那么合并分并没有难度，但是如何要去合并两个独立的分支，那么 SVN 需要比较两个版本，然后通过三路对比（Three-Way Comparsion) 的方式来对比：
+- 最近的共有的版本
+- 两个要合并的版本
 
-## 6 分布式版本控制系统和集中式版本管理系统有什么各自的缺点和优点？
-*todo*
+有些文件行在一个版本中修改了，但是没有在另一个中修改，合并比较简单。但是如果某一个行的修改发生在所有的版本中， SVN 就会报错，需要人工介入。
 
-## 7 在Mercurial或者git中合并比SVN中容易；
-*todo*
+与之相反的是，`Mercurial` 或者 `Git` 使用修改数据集（ChangeSets) 来记录修改而不是版本。整个仓库是用一个ChangeSets 组装成的树结构，每个节点依赖于其父节点，而父节点也会有若干个子节点，根节点代表了一个空目录。换句话说，git或者hg 是这边表达的
+- 首先我是一个空节点
+- 每次提交就得到了一个 patch 
+
+这样每次在合并的时候，git/hg 不仅知道每个分支当前的是什么情况，而且还知道它们之前的转移的过程，这样合并的过程就简单多了。
